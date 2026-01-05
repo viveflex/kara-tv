@@ -1,4 +1,13 @@
-// import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+
+// This endpoint is deprecated - use /api/lg-video instead
+export async function GET(request: NextRequest) {
+  return NextResponse.json({ 
+    error: 'This endpoint is deprecated. Use /api/lg-video instead.' 
+  }, { status: 410 });
+}
+
+// Legacy code kept for reference:
 // import ytdl from '@distube/ytdl-core';
 
 // export async function GET(request: NextRequest) {
@@ -51,3 +60,4 @@
 //     }, { status: 500 });
 //   }
 // }
+
