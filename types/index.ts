@@ -22,6 +22,8 @@ export interface YouTubeSearchResult {
   channelTitle: string;
   thumbnail: string;
   duration: string;
+   embeddable: boolean;
+   blockedReason?: string;
 }
 
 export interface WSMessage {

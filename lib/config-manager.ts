@@ -14,6 +14,10 @@ interface Config {
     name: string;
     version: string;
   };
+  search?: {
+    maxResults?: number;
+    includeUnembeddable?: boolean;
+  };
   library?: {
     autoSaveThreshold: number;
     maxTempVideos: number;
