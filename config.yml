@@ -13,6 +13,12 @@ app:
   name: LG Karaoke
   version: 1.0.0
 
+search:
+  # Default max number of search results returned to clients
+  maxResults: 10
+  # Whether to include unembeddable videos in results (they will be flagged)
+  includeUnembeddable: true
+
 library:
   # Auto-save videos after N plays
   autoSaveThreshold: 5

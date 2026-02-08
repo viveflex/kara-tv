@@ -2,7 +2,7 @@
   "9FlxoOWZaEE": {
     "videoId": "9FlxoOWZaEE",
     "title": "Unknown",
-    "filePath": "D:\\VSCodeWorkspace\\webOs\\kara-next\\library\\youtube\\9FlxoOWZaEE.mp4",
+    "filePath": "",
     "addedAt": 1767626665581,
     "fileSize": 15319072,
     "playCount": null,
@@ -50,7 +50,7 @@
     "videoId": "10QvN2MOBVM",
     "title": "Unknown",
     "location": "temp",
-    "filePath": "D:\\VSCodeWorkspace\\webOs\\kara-next\\library\\youtube\\10QvN2MOBVM.mp4",
+    "filePath": "",
     "playCount": 1,
     "addedAt": 1767630373567,
     "fileSize": 11435154,
@@ -61,7 +61,7 @@
     "videoId": "uJV0avAF_FU",
     "title": "Unknown",
     "location": "temp",
-    "filePath": "D:\\VSCodeWorkspace\\webOs\\kara-next\\library\\youtube\\uJV0avAF_FU.mp4",
+    "filePath": "",
     "playCount": 3,
     "addedAt": 1767631850778,
     "fileSize": 17921184,
@@ -71,12 +71,12 @@
   "o8yVRoTw_O8": {
     "videoId": "o8yVRoTw_O8",
     "title": "Unknown",
-    "location": "temp",
-    "filePath": "D:\\VSCodeWorkspace\\webOs\\kara-next\\library\\youtube\\o8yVRoTw_O8.mp4",
-    "playCount": 2,
+    "location": "saved",
+    "filePath": "D:\\VSCodeWorkspace\\webOs\\kara-tv-dev\\library\\youtube\\saved\\o8yVRoTw_O8.mp4",
+    "playCount": 5,
     "addedAt": 1767632747235,
     "fileSize": 22013030,
-    "isSaved": false,
-    "lastPlayed": 1767634498121
+    "isSaved": true,
+    "lastPlayed": 1770117158471
   }
 }

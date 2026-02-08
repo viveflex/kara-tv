@@ -18,6 +18,9 @@ interface SearchResult {
   title: string;
   channelTitle: string;
   thumbnail: string;
+  duration?: string;
+  embeddable?: boolean;
+  blockedReason?: string;
 }
 
 interface QueueState {
@@ -44,6 +47,9 @@ const getWsUrl = () => {
 export default function MobilePage() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchMode, setSearchMode] = useState<'song' | 'artist' | 'genre' | 'decade'>('song');
+  const [hideUnembeddable, setHideUnembeddable] = useState(true);
+  const [resultLimit, setResultLimit] = useState(10);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [queue, setQueue] = useState<QueueState>({ songs: [], currentIndex: -1, isPlaying: false });
   const [isSearching, setIsSearching] = useState(false);
@@ -107,8 +113,13 @@ export default function MobilePage() {
     setIsSearching(true);
     try {
       const API_URL = getApiUrl();
-      // No need to send API key - server uses keys from config.yml
-      const response = await fetch(`${API_URL}/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const params = new URLSearchParams({
+        q: searchQuery,
+        mode: searchMode,
+        includeUnembeddable: hideUnembeddable ? 'false' : 'true',
+        limit: String(resultLimit)
+      });
+      const response = await fetch(`${API_URL}/api/search?${params.toString()}`);
       if (response.ok) {
         const results = await response.json();
         setSearchResults(results);
@@ -124,6 +135,11 @@ export default function MobilePage() {
   };
 
   const handleAddSong = async (result: SearchResult) => {
+    if (result.embeddable === false) {
+      const proceed = window.confirm('This video may not be embeddable. Add it anyway?');
+      if (!proceed) return;
+    }
+
     const song: Song = {
       id: `yt-${result.videoId}-${Date.now()}`,
       videoId: result.videoId,
@@ -142,8 +158,7 @@ export default function MobilePage() {
         body: JSON.stringify(song)
       });
 
-      if (response.ok) {
-        // Clear search results after adding
+      if (response.ok && searchMode === 'song') {
         setSearchResults([]);
         setSearchQuery('');
       }
@@ -185,21 +200,55 @@ export default function MobilePage() {
 
       {/* Search */}
       <div className="p-4">
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search for songs..."
-            className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white"
-          />
-          <button
-            type="submit"
-            disabled={isSearching}
-            className="px-6 py-3 bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-gray-700 disabled:cursor-not-allowed"
-          >
-            {isSearching ? '...' : '🔍'}
-          </button>
+        <form onSubmit={handleSearch} className="space-y-3">
+          <div className="flex gap-2">
+            <select
+              value={searchMode}
+              onChange={(e) => setSearchMode(e.target.value as any)}
+              className="px-3 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm"
+            >
+              <option value="song">Search song</option>
+              <option value="artist">Search by artist</option>
+              <option value="genre">Search by genre</option>
+              <option value="decade">Search by decade/era</option>
+            </select>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search for songs..."
+              className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white"
+            />
+            <button
+              type="submit"
+              disabled={isSearching}
+              className="px-6 py-3 bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-gray-700 disabled:cursor-not-allowed"
+            >
+              {isSearching ? '...' : '🔍'}
+            </button>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-gray-300">
+            <input
+              type="checkbox"
+              checked={hideUnembeddable}
+              onChange={(e) => setHideUnembeddable(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Hide videos that are likely unembeddable
+          </label>
+
+          <div className="flex items-center gap-2 text-sm text-gray-300">
+            <span>Results</span>
+            <input
+              type="number"
+              min={1}
+              max={25}
+              value={resultLimit}
+              onChange={(e) => setResultLimit(Math.min(25, Math.max(1, Number(e.target.value) || 1)))}
+              className="w-20 px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm"
+            />
+          </div>
         </form>
 
         {/* Search Results */}
@@ -218,6 +267,11 @@ export default function MobilePage() {
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm truncate">{result.title}</div>
                   <div className="text-gray-400 text-xs truncate">{result.channelTitle}</div>
+                  {result.embeddable === false && (
+                    <div className="text-yellow-400 text-xs mt-1 truncate">
+                      ⚠️ Not embeddable ({result.blockedReason || 'likely blocked'})
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => handleAddSong(result)}
