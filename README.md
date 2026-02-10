@@ -114,7 +114,7 @@ npm run start
 
 1. **YouTube API Dependency**: The application relies on YouTube Data API, which has daily quota limits (10,000 units/day by default)
 
-2. **Single Active API Key**: While the configuration supports multiple API keys for rotation, only one key is active at a time per request
+2. **Manual API Key Rotation**: While the configuration supports multiple API keys, automatic rotation between keys is not currently implemented; keys must be manually switched
 
 3. **Local Storage Only**: Video library and playlist data are stored locally on the server; no cloud storage integration
 
@@ -130,7 +130,7 @@ npm run start
 
 The following features are planned for future releases:
 
-1. **Enhanced API Key Management**: Automatic rotation through multiple YouTube API keys to extend daily quota limits
+1. **Automatic API Key Rotation**: Implement automatic rotation through multiple YouTube API keys to extend daily quota limits beyond a single key's allocation
 
 2. **User Authentication System**: User accounts with profiles, favorites, and personalized playlists
 
