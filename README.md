@@ -126,7 +126,7 @@ npm run start
 
 7. **Single Server Instance**: Designed for single-server deployment; no multi-server clustering support
 
-## Next Target Feature
+## Next Target Features
 
 The following features are planned for future releases:
 
