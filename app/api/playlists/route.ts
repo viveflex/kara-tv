@@ -25,7 +25,8 @@ export async function POST(request: NextRequest) {
     if (action === 'load') {
       const entry = loadPlaylist(name);
       if (!entry) return NextResponse.json({ error: 'Playlist not found' }, { status: 404 });
-      queueManager.setQueue(entry.songs);
+      queueManager.clearQueue();
+      entry.songs.forEach(song => queueManager.addSong(song));
       return NextResponse.json({ success: true, playlist: { name: entry.name, count: entry.songs.length } });
     }
 

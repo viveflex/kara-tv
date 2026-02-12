@@ -16,9 +16,12 @@ export function OPTIONS() {
 }
 
 export async function GET(request: NextRequest) {
+  const { queueManager } = await import('@/lib/queue-manager');
   const cookieToken = request.headers.get('x-master-token') || request.cookies.get(MASTER_COOKIE)?.value;
   const state = masterManager.getState(cookieToken);
-  const res = corsJson(state);
+  const autoRecommend = queueManager.getAutoRecommend();
+  
+  const res = corsJson({ ...state, autoRecommend });
   if (state.youAreMaster && state.masterToken) {
     res.headers.set('x-master-token', state.masterToken);
     res.cookies.set(MASTER_COOKIE, state.masterToken, { path: '/', maxAge: 60 * 60 * 24 });
@@ -29,8 +32,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { action, label, lock } = body;
+    const { action, label, lock, autoRecommend } = body;
     const cookieToken = request.headers.get('x-master-token') || request.cookies.get(MASTER_COOKIE)?.value;
+
+    // Handle autoRecommend setting update
+    if (autoRecommend !== undefined) {
+      const { queueManager } = await import('@/lib/queue-manager');
+      queueManager.setAutoRecommend(autoRecommend);
+      return corsJson({ success: true, autoRecommend });
+    }
 
     switch (action) {
       case 'claim': {

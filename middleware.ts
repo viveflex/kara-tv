@@ -2,13 +2,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  // Rewrite /tv to /tv/index.html (clean URL)
-  if (request.nextUrl.pathname === '/tv' || request.nextUrl.pathname === '/tv/') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/tv/index.html';
-    return NextResponse.rewrite(url);
-  }
-
   // Handle CORS for API routes
   if (request.nextUrl.pathname.startsWith('/api/')) {
     const response = NextResponse.next();
@@ -32,5 +25,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/:path*', '/tv', '/tv/'],
+  matcher: ['/api/:path*'],
 };

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queueManager } from '@/lib/queue-manager';
 import { Song } from '@/types';
+import { ensureListenersAttached } from '@/lib/socket';
 
 // GET /api/queue - Get current queue state
 export async function GET() {
@@ -11,6 +12,9 @@ export async function GET() {
 // POST /api/queue - Add song to queue
 export async function POST(request: NextRequest) {
   try {
+    // Ensure socket listeners are attached (fixes hot reload issues)
+    ensureListenersAttached();
+    
     const song: Song = await request.json();
     
     if (!song.videoId || !song.title) {

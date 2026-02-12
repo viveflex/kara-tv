@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queueManager } from '@/lib/queue-manager';
+import { ensureListenersAttached } from '@/lib/socket';
 
 // POST /api/playback - Control playback
 export async function POST(request: NextRequest) {
   try {
+    // Ensure socket listeners are attached (fixes hot reload issues)
+    ensureListenersAttached();
+    
     const { action, index, fromIndex, toIndex } = await request.json();
 
     let result;
     switch (action) {
       case 'next':
+        // Next just moves to next song (keeps current song in queue)
         result = queueManager.playNext();
         break;
       case 'previous':
@@ -28,10 +33,11 @@ export async function POST(request: NextRequest) {
         }
         break;
       case 'complete':
+        // Complete and Skip both remove song and move to next
         result = queueManager.removeCurrentAndMoveNext();
         break;
       case 'skip':
-        // Skip is same as complete - remove current and move to next
+        // Skip removes current song as if it was completed
         result = queueManager.removeCurrentAndMoveNext();
         break;
       case 'reorder':

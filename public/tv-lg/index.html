@@ -6,8 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="icon" type="image/png" href="./assets/icon-BH7af0WM.png">
-  <title>PEREZ Karaoke</title>
+  <title>LG Karaoke</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -82,63 +81,6 @@
     #settings-content h2 {
       margin-bottom: 20px;
       color: #FF0000;
-    }
-    #qr-overlay {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 2000;
-      display: none;
-      pointer-events: auto;
-    }
-    #qr-overlay.visible {
-      display: block;
-    }
-    #qr-content {
-      background-color: white;
-      padding: 20px;
-      border-radius: 12px;
-      text-align: center;
-      cursor: grab;
-      user-select: none;
-      position: relative;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-      min-width: 280px;
-    }
-    #qr-content:active {
-      cursor: grabbing;
-    }
-    #qr-content h2 {
-      color: #FF0000;
-      margin-bottom: 5px;
-      font-size: 18px;
-    }
-    #qr-content p {
-      color: #333;
-      margin-bottom: 15px;
-      font-size: 14px;
-    }
-    #qr-code {
-      margin: 15px 0;
-    }
-    #qr-url {
-      color: #666;
-      font-size: 12px;
-      margin-top: 10px;
-      word-break: break-all;
-    }
-    .qr-close-btn {
-      margin-top: 15px;
-      padding: 8px 20px;
-      background-color: #FF0000;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    .qr-close-btn:hover {
-      background-color: #CC0000;
     }
     .setting-group {
       margin-bottom: 20px;
@@ -269,38 +211,6 @@
       color: #999;
       font-size: 12px;
     }
-    .queue-item-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .queue-item-status {
-      font-size: 11px;
-      margin-top: 4px;
-    }
-    .save-btn, .skip-btn {
-      background-color: #333;
-      border: none;
-      padding: 6px 10px;
-      font-size: 16px;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    .save-btn:hover {
-      background-color: #444;
-    }
-    .skip-btn {
-      background-color: #FF5722;
-    }
-    .skip-btn:hover {
-      background-color: #E64A19;
-    }
-    .queue-item[draggable="true"] {
-      cursor: move;
-    }
-    .queue-item[draggable="true"]:hover {
-      background-color: #2A2A2A;
-    }
     .empty-queue {
       text-align: center;
       color: #666;
@@ -376,7 +286,7 @@
       background-color: #444 !important;
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-Ci0kfdK6.js"></script>
+  <script type="module" crossorigin src="./assets/index-CbMlEdv0.js"></script>
 </head>
 <body>
   <div id="app">
@@ -386,10 +296,7 @@
           <div id="title">🎤 PEREZ Karaoke <span id="build-version" style="font-size: 12px; color: #666;"></span></div>
           <div id="status">Connecting...</div>
         </div>
-        <div>
-          <button id="qr-btn" title="Show QR Code" style="margin-right: 10px;">📱</button>
-          <button id="settings-btn" title="Settings">⚙️</button>
-        </div>
+        <button id="settings-btn" title="Settings">⚙️</button>
       </div>
       
       <div id="player-container">
@@ -405,7 +312,7 @@
         <button id="prev-btn">⏮️ Previous</button>
         <button id="play-pause-btn">▶️ Play</button>
         <button id="next-btn">⏭️ Next</button>
-        <button id="skip-btn" style="background-color: #FF5722;">⏩ Skip</button>
+        <button id="skip-btn">⏩ Skip</button>
       </div>
     </div>
     
@@ -424,8 +331,12 @@
     <div id="settings-content">
       <h2>Settings</h2>
       <div class="setting-group">
-        <label>Server URL</label>
-        <input type="text" id="server-url-input" placeholder="http://192.168.2.101:3000" />
+        <label>Backend API URL</label>
+        <input type="text" id="api-url-input" placeholder="http://192.168.2.101:3000" />
+      </div>
+      <div class="setting-group">
+        <label>WebSocket URL</label>
+        <input type="text" id="ws-url-input" placeholder="http://192.168.2.101:3001" />
       </div>
       <div class="setting-group">
         <label>
@@ -440,17 +351,7 @@
     </div>
   </div>
 
-  <!-- QR Code Overlay -->
-  <div id="qr-overlay">
-    <div id="qr-content">
-      <h2>📱 Mobile Queue Manager</h2>
-      <p>Scan to add songs from your phone</p>
-      <div id="qr-code"></div>
-      <div id="qr-url"></div>
-      <button class="qr-close-btn" id="qr-close-btn">Close</button>
-    </div>
-  </div>
+  <script src="https://www.youtube.com/iframe_api"></script>
 
-  <script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>

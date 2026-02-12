@@ -49,12 +49,24 @@ export default function MobilePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMode, setSearchMode] = useState<'song' | 'artist' | 'genre' | 'decade'>('song');
   const [hideUnembeddable, setHideUnembeddable] = useState(true);
+  const [karaokeOnly, setKaraokeOnly] = useState(true);
   const [resultLimit, setResultLimit] = useState(10);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [queue, setQueue] = useState<QueueState>({ songs: [], currentIndex: -1, isPlaying: false });
+  const [queue, setQueue] = useState<QueueState>({ songs: [], currentIndex: -1, isPlaying: false, playHistory: [] });
   const [isSearching, setIsSearching] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [deviceId] = useState(() => {
+    if (typeof window !== 'undefined') {
+      let id = localStorage.getItem('kara_device_id');
+      if (!id) {
+        id = `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('kara_device_id', id);
+      }
+      return id;
+    }
+    return 'unknown';
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -114,10 +126,11 @@ export default function MobilePage() {
     try {
       const API_URL = getApiUrl();
       const params = new URLSearchParams({
-        q: searchQuery,
+        q: karaokeOnly ? searchQuery : searchQuery + ' (any song)',
         mode: searchMode,
         includeUnembeddable: hideUnembeddable ? 'false' : 'true',
-        limit: String(resultLimit)
+        limit: String(resultLimit),
+        karaokeOnly: String(karaokeOnly)
       });
       const response = await fetch(`${API_URL}/api/search?${params.toString()}`);
       if (response.ok) {
@@ -145,9 +158,11 @@ export default function MobilePage() {
       videoId: result.videoId,
       title: result.title,
       artist: result.channelTitle,
+      duration: 0,
       thumbnail: result.thumbnail,
       addedAt: Date.now(),
-      source: 'youtube'
+      source: 'youtube',
+      addedBy: deviceId
     };
 
     try {
@@ -165,6 +180,21 @@ export default function MobilePage() {
     } catch (error) {
       console.error('Error adding song:', error);
       alert('Failed to add song');
+    }
+  };
+
+  const handleRetractSong = async (songId: string) => {
+    try {
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/queue/${songId}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) {
+        alert('Failed to remove song');
+      }
+    } catch (error) {
+      console.error('Error removing song:', error);
+      alert('Failed to remove song');
     }
   };
 
@@ -188,12 +218,12 @@ export default function MobilePage() {
       {/* Settings Panel */}
       {showSettings && (
         <div className="bg-gray-800 p-4 border-b border-gray-700">
-          <h2 className="font-bold mb-2">Settings</h2>
+          <h2 className="font-bold mb-2">Info</h2>
           <p className="text-sm text-gray-400 mb-2">
-            ℹ️ API keys are now managed in server config.yml
+            ℹ️ API keys and settings are managed in Master Control
           </p>
           <p className="text-xs text-gray-500">
-            No mobile configuration needed!
+            Visit /master to configure app settings
           </p>
         </div>
       )}
@@ -227,6 +257,16 @@ export default function MobilePage() {
               {isSearching ? '...' : '🔍'}
             </button>
           </div>
+
+          <label className="flex items-center gap-2 text-sm text-gray-300">
+            <input
+              type="checkbox"
+              checked={karaokeOnly}
+              onChange={(e) => setKaraokeOnly(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Karaoke songs only
+          </label>
 
           <label className="flex items-center gap-2 text-sm text-gray-300">
             <input
@@ -304,7 +344,7 @@ export default function MobilePage() {
                 key={song.id}
                 className={`bg-gray-800 p-3 rounded-lg flex gap-3 items-center ${
                   index === queue.currentIndex ? 'border-2 border-red-500' : ''
-                }`}
+                } ${song.isFallback ? 'border-l-4 border-l-blue-500' : ''}`}
               >
                 <img
                   src={song.thumbnail}
@@ -314,9 +354,21 @@ export default function MobilePage() {
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm truncate">{song.title}</div>
                   <div className="text-gray-400 text-xs truncate">{song.artist}</div>
+                  {song.isFallback && (
+                    <div className="text-blue-400 text-xs mt-1">🎲 Auto-recommended</div>
+                  )}
                 </div>
                 {index === queue.currentIndex && (
                   <span className="text-red-500 text-xl">▶</span>
+                )}
+                {song.addedBy === deviceId && index !== queue.currentIndex && (
+                  <button
+                    onClick={() => handleRetractSong(song.id)}
+                    className="px-3 py-1 bg-red-700 hover:bg-red-800 rounded text-xs"
+                    title="Remove your song"
+                  >
+                    ✕
+                  </button>
                 )}
               </div>
             ))}

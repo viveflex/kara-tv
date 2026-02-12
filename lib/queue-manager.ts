@@ -5,14 +5,34 @@ class QueueManager extends EventEmitter {
   private state: QueueState = {
     songs: [],
     currentIndex: -1,
-    isPlaying: false
+    isPlaying: false,
+    playHistory: []
   };
+  private autoRecommendEnabled = true; // Enable by default
 
   getState(): QueueState {
     return { ...this.state };
   }
 
+  setAutoRecommend(enabled: boolean): void {
+    this.autoRecommendEnabled = enabled;
+  }
+
+  getAutoRecommend(): boolean {
+    return this.autoRecommendEnabled;
+  }
+
   addSong(song: Song): void {
+    // If adding a non-fallback song while fallback songs exist, interrupt them
+    if (!song.isFallback) {
+      const hasFallbackSongs = this.state.songs.some(s => s.isFallback);
+      if (hasFallbackSongs) {
+        // Remove all fallback songs
+        this.state.songs = this.state.songs.filter(s => !s.isFallback);
+        this.emit('fallback_interrupted');
+      }
+    }
+    
     this.state.songs.push(song);
     console.log('Song added to queue:', song.title, 'Total songs:', this.state.songs.length, 'CurrentIndex:', this.state.currentIndex);
     console.log('Emitting update event, listeners:', this.listenerCount('update'));
@@ -89,6 +109,14 @@ class QueueManager extends EventEmitter {
     console.log('removeCurrentAndMoveNext: Removing song:', currentSong.title, 'at index:', this.state.currentIndex);
     console.log('Queue before removal:', this.state.songs.map(s => s.title));
     
+    // Add to play history (keep last 50 songs, don't include fallback songs)
+    if (!currentSong.isFallback) {
+      this.state.playHistory.push(currentSong);
+      if (this.state.playHistory.length > 50) {
+        this.state.playHistory.shift();
+      }
+    }
+    
     // Remove current song from queue
     this.state.songs.splice(this.state.currentIndex, 1);
     
@@ -100,6 +128,27 @@ class QueueManager extends EventEmitter {
       this.state.currentIndex = -1;
       this.state.isPlaying = false;
       console.log('No more songs in queue');
+      
+      // Trigger auto-recommend if enabled
+      if (this.autoRecommendEnabled) {
+        console.log('Auto-recommend enabled, will request recommendations. Play history:', this.state.playHistory.length);
+        
+        // Emit via EventEmitter for any local listeners
+        this.emit('queue_empty');
+        
+        // ALSO directly emit via socket.io to bypass hot reload issues
+        try {
+          const socketModule = require('./socket');
+          const success = socketModule.emitToClients('queue_empty');
+          if (success) {
+            console.log('✅ queue_empty broadcasted via socket.io');
+          } else {
+            console.warn('⚠️ Failed to broadcast queue_empty via socket.io');
+          }
+        } catch (err) {
+          console.error('❌ Error broadcasting to socket:', err);
+        }
+      }
     } else {
       console.log('Next song:', this.state.songs[this.state.currentIndex]?.title);
     }
@@ -144,7 +193,7 @@ class QueueManager extends EventEmitter {
   }
 
   skipCurrent(): Song | null {
-    // Skip behaves same as song complete - remove and move to next
+    // Skip removes current song (same as complete)
     return this.removeCurrentAndMoveNext();
   }
 
@@ -152,6 +201,7 @@ class QueueManager extends EventEmitter {
     this.state.songs = [];
     this.state.currentIndex = -1;
     this.state.isPlaying = false;
+    this.state.playHistory = [];
     this.emit('update', this.state);
   }
 }
@@ -161,8 +211,9 @@ const globalForQueue = global as typeof globalThis & {
   queueManager?: QueueManager;
 };
 
-export const queueManager = globalForQueue.queueManager ?? new QueueManager();
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForQueue.queueManager = queueManager;
+// Always create a fresh instance to ensure methods are available
+if (!globalForQueue.queueManager) {
+  globalForQueue.queueManager = new QueueManager();
 }
+
+export const queueManager = globalForQueue.queueManager;

@@ -4,8 +4,14 @@ import { configManager } from '@/lib/config-manager';
 
 const DEFAULT_MAX_RESULTS = 10;
 
-const buildSearchQuery = (query: string, mode: string) => {
+const buildSearchQuery = (query: string, mode: string, karaokeOnly: boolean = true) => {
   const trimmed = query.trim();
+  
+  if (!karaokeOnly) {
+    // Return query as-is for non-karaoke searches
+    return trimmed;
+  }
+  
   switch (mode) {
     case 'artist':
       return `${trimmed} karaoke songs`;
@@ -42,6 +48,7 @@ export async function GET(request: NextRequest) {
   const mode = searchParams.get('mode') || 'song';
   const limitParam = searchParams.get('limit');
   const includeUnembeddableParam = searchParams.get('includeUnembeddable');
+  const karaokeOnlyParam = searchParams.get('karaokeOnly');
 
   if (!query) {
     return NextResponse.json({ error: 'Query parameter required' }, { status: 400 });
@@ -58,8 +65,9 @@ export async function GET(request: NextRequest) {
         ? false
         : includeUnembeddableDefault;
 
+    const karaokeOnly = karaokeOnlyParam === 'false' ? false : true;
     const maxResults = clampLimit(limitParam, config.search?.maxResults ?? DEFAULT_MAX_RESULTS);
-    const searchQuery = buildSearchQuery(query, mode);
+    const searchQuery = buildSearchQuery(query, mode, karaokeOnly);
 
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&videoEmbeddable=${includeUnembeddable ? 'any' : 'true'}&maxResults=${maxResults}&key=${apiKey}`;
 

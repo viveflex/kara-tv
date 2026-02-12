@@ -30,6 +30,7 @@ export default function MasterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [label, setLabel] = useState('');
+  const [autoRecommend, setAutoRecommend] = useState(false);
 
   const load = async () => {
     try {
@@ -49,9 +50,37 @@ export default function MasterPage() {
 
   useEffect(() => {
     load();
+    loadSettings();
     const interval = setInterval(load, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const loadSettings = async () => {
+    try {
+      const res = await fetch('/api/settings', { cache: 'no-store' });
+      const data = await res.json();
+      setAutoRecommend(data.autoRecommend || false);
+    } catch (err: any) {
+      console.error('Failed to load settings:', err);
+    }
+  };
+
+  const handleAutoRecommendToggle = async (enabled: boolean) => {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ autoRecommend: enabled }),
+      });
+      if (res.ok) {
+        setAutoRecommend(enabled);
+      } else {
+        setError('Failed to update settings');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to update settings');
+    }
+  };
 
   const post = async (action: string, extra?: any) => {
     setLoading(true);
@@ -191,7 +220,26 @@ export default function MasterPage() {
             <div>Status: {state.locked ? 'Locked' : 'Unlocked'}</div>
             <div>Last seen: {state.lastSeen ? formatTime(state.lastSeen) : '—'}</div>
             <div>You are master: {state.youAreMaster ? 'Yes' : 'No'}</div>
+          </div>4">
+        <h2 className="font-semibold">Settings</h2>
+        
+        <label className="flex items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={autoRecommend}
+            onChange={(e) => handleAutoRecommendToggle(e.target.checked)}
+            className="h-4 w-4"
+          />
+          <div>
+            <div className="text-white">Auto-play recommendations when queue ends</div>
+            <div className="text-xs text-gray-400">
+              Automatically plays similar songs when the queue is empty based on play history
+            </div>
           </div>
+        </label>
+      </div>
+
+      <div className="bg-gray-800 rounded-lg p-4 space-y-
         )}
         {error && <div className="text-red-400 text-sm">{error}</div>}
       </div>

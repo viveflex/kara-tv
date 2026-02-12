@@ -1,0 +1,248 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { Song, QueueState } from '@/types';
+
+const getApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return 'http://localhost:3000';
+};
+
+export default function TVPage() {
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [queue, setQueue] = useState<QueueState>({ songs: [], currentIndex: -1, isPlaying: false, playHistory: [] });
+  const [status, setStatus] = useState('Connecting...');
+  const [showSettings, setShowSettings] = useState(false);
+  const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [playerReady, setPlayerReady] = useState(false);
+
+  useEffect(() => {
+    const API_URL = getApiUrl();
+    
+    // Mark player as ready (simple video element)
+    setPlayerReady(true);
+    
+    // Initialize Socket.IO
+    fetch('/api/socket').catch(err => console.error('Socket init error:', err));
+    
+    // Fetch initial queue state
+    fetch(`${API_URL}/api/queue`)
+      .then(res => res.json())
+      .then(state => {
+        setQueue(state);
+        if (state.songs.length > 0 && state.currentIndex >= 0) {
+          const currentSong = state.songs[state.currentIndex];
+          if (currentSong) {
+            setCurrentVideoId(currentSong.videoId);
+          }
+        }
+      })
+      .catch(err => console.error('Failed to fetch queue:', err));
+
+    // Connect to WebSocket
+    const newSocket = io(API_URL, { 
+      path: '/api/socket',
+      transports: ['websocket', 'polling']
+    });
+    setSocket(newSocket);
+
+    newSocket.on('connect', () => {
+      console.log('TV: Connected to socket');
+      setStatus('Connected');
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('TV: Disconnected from socket');
+      setStatus('Disconnected');
+    });
+
+    newSocket.on('queue_update', (state: QueueState) => {
+      console.log('TV: Received queue_update:', state);
+      setQueue(state);
+      if (state.songs.length > 0 && state.currentIndex >= 0) {
+        const currentSong = state.songs[state.currentIndex];
+        if (currentSong) {
+          console.log('TV: Updating video to:', currentSong.videoId);
+          setCurrentVideoId(currentSong.videoId);
+        }
+      } else {
+        setCurrentVideoId(null);
+      }
+    });
+
+    newSocket.on('queue_empty', async () => {
+      console.log('Queue empty, fetching recommendations');
+      try {
+        const res = await fetch(`${API_URL}/api/recommendations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ count: 5 })
+        });
+        if (res.ok) {
+          const { recommendations } = await res.json();
+          for (const song of recommendations) {
+            await fetch(`${API_URL}/api/queue`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(song)
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch recommendations:', error);
+      }
+    });
+
+    return () => {
+      newSocket.close();
+    };
+  }, []);
+
+  const handleVideoEnded = () => {
+    console.log('Video ended, calling API');
+    const API_URL = getApiUrl();
+    fetch(`${API_URL}/api/playback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'complete' })
+    });
+  };
+
+  const handlePlayback = (action: string) => {
+    const API_URL = getApiUrl();
+    fetch(`${API_URL}/api/playback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    });
+  };
+
+  const currentSong = queue.currentIndex >= 0 ? queue.songs[queue.currentIndex] : null;
+
+  return (
+    <>
+      <Script src="https://www.youtube.com/iframe_api" strategy="afterInteractive" />
+      <div style={{ width: '100vw', height: '100vh', backgroundColor: '#0F0F0F', color: '#fff', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif' }}>
+        {/* Header */}
+        <div style={{ backgroundColor: '#1A1A1A', padding: '20px', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#FF0000' }}>
+              🎤 PEREZ Karaoke
+            </div>
+            <div style={{ fontSize: '14px', color: status === 'Connected' ? '#0F0' : '#FF0000', marginTop: '4px' }}>
+              {status}
+            </div>
+          </div>
+          <button onClick={() => setShowSettings(!showSettings)} style={{ backgroundColor: '#333', color: '#fff', padding: '8px 16px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '20px' }} title="Settings">
+            ⚙️
+          </button>
+        </div>
+
+        {/* Main Content */}
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          {/* Video Player */}
+          <div style={{ flex: 1, backgroundColor: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div id="player" style={{ width: '100%', height: '100%', display: currentVideoId ? 'block' : 'none' }}></div>
+            {!currentVideoId && (
+              <div id="no-video" style={{ position: 'absolute', textAlign: 'center', color: '#666' }}>
+                <div style={{ fontSize: '80px', marginBottom: '20px' }}>🎵</div>
+                <div style={{ fontSize: '20px' }}>No video playing</div>
+                <div style={{ fontSize: '12px', marginTop: '8px' }}>Add songs from mobile app</div>
+              </div>
+            )}
+          </div>
+
+          {/* Queue Sidebar */}
+          <div style={{ width: '400px', backgroundColor: '#1A1A1A', borderLeft: '1px solid #333', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '20px', borderBottom: '1px solid #333' }}>
+              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>Queue (<span>{queue.songs.length}</span>)</div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
+              {queue.songs.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#666', padding: '40px 20px' }}>
+                  <div>Queue is empty</div>
+                  <div style={{ fontSize: '12px', marginTop: '8px' }}>Add songs from mobile</div>
+                </div>
+              ) : (
+                queue.songs.map((song, index) => (
+                  <div
+                    key={song.id}
+                    style={{
+                      backgroundColor: '#0F0F0F',
+                      padding: '12px',
+                      marginBottom: '8px',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      gap: '12px',
+                      alignItems: 'center',
+                      border: index === queue.currentIndex ? '2px solid #FF0000' : song.isFallback ? '2px solid #3B82F6' : 'none'
+                    }}
+                  >
+                    <img src={song.thumbnail} alt="" style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '4px' }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '4px' }}>
+                        {song.title}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {song.artist}
+                      </div>
+                      {song.isFallback && (
+                        <div style={{ fontSize: '11px', color: '#3B82F6', marginTop: '4px' }}>🎲 Auto-recommended</div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            {/* Playback Controls */}
+            <div style={{ padding: '20px', borderTop: '1px solid #333', display: 'flex', gap: '15px', justifyContent: 'center' }}>
+              <button
+                onClick={() => handlePlayback('previous')}
+                disabled={queue.currentIndex <= 0}
+                style={{ padding: '12px 24px', backgroundColor: queue.currentIndex <= 0 ? '#333' : '#FF0000', color: '#fff', border: 'none', borderRadius: '8px', cursor: queue.currentIndex <= 0 ? 'not-allowed' : 'pointer', fontSize: '16px' }}
+              >
+                ⏮️ Previous
+              </button>
+              <button
+                onClick={() => handlePlayback('skip')}
+                disabled={!currentSong}
+                style={{ padding: '12px 24px', backgroundColor: !currentSong ? '#333' : '#FF0000', color: '#fff', border: 'none', borderRadius: '8px', cursor: !currentSong ? 'not-allowed' : 'pointer', fontSize: '16px' }}
+              >
+                ⏭️ Next
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Settings Modal */}
+        {showSettings && (
+          <div onClick={() => setShowSettings(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: '#1A1A1A', padding: '30px', borderRadius: '12px', width: '500px', maxWidth: '90%' }}>
+              <h2 style={{ fontSize: '24px', marginBottom: '20px', color: '#FF0000' }}>Settings</h2>
+              <p style={{ color: '#aaa', marginBottom: '20px' }}>
+                Settings are managed in Master Control (/master)
+              </p>
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>Scan to access mobile app</div>
+                <img src={`${getApiUrl()}/api/qr?data=${encodeURIComponent(`${getApiUrl()}/mobile`)}&size=200`} alt="QR Code" style={{ width: '200px', height: '200px' }} />
+                <div style={{ color: '#888', marginTop: '10px', fontSize: '14px' }}>
+                  {getApiUrl().replace('http://', '').replace('https://', '')}/mobile
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button onClick={() => setShowSettings(false)} style={{ padding: '12px 24px', backgroundColor: '#FF0000', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px' }}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
